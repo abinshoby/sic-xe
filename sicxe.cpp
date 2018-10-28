@@ -137,7 +137,10 @@ string OPTAB[][3]={
 
 
 	};
+string PGBLOCK[100][4];
+int BLOCK_NO=0;
 
+int block_sz=1;
 int search_symtab(string label){
 	for(int i=0;i<symtabsz;i++){
 		if(SYMTAB[i][0].compare(label)==0)
@@ -163,6 +166,13 @@ int find_length(string operand){
 		return (operand.length()-3)/2; //check here for syntax and size
 
 	}
+	if(operand.at(0)=='='){
+		if(operand.at(1)=='C'){
+			return operand.length()-4;
+		}
+		else
+			return (operand.length()-4)/2;
+	}
 	return 0;
 }
 int search_optab(string opcode){
@@ -172,7 +182,37 @@ int search_optab(string opcode){
 	}
 	return -1;
 }
+int search_block(string operand){
+	for(int i=0;i<block_sz;i++){
+		if(PGBLOCK[i][0].compare(operand)==0)
+			return i;
+	}
+	return -1;
+}
+void update_block_table(){
 
+	for(int i=0;i<block_sz-1;i++){
+		//cout<<"before"<<i;
+		stringstream no1(PGBLOCK[i][2]);
+		stringstream no2(PGBLOCK[i][3]);
+		int nno1,nno2;
+		no1>>nno1;
+		no2>>nno2;
+		//cout<<"\n"<<nno1;
+		//cout<<"\n"<<nno2;
+
+
+		//stringstream res;
+		//res<<(nno1+nno2);
+		//cout<<"before"<<i;
+		nno1=nno1+nno2;
+		//cout<<"before"<<i;
+		PGBLOCK[i+1][2]=to_string(nno1);
+		//cout<<"after"<<i;
+		//cout<<"block size:"<<block_sz;
+		
+	}
+}
 
 
 
@@ -188,13 +228,58 @@ int pass1(int lineno,string label,string opcode,string operand,char argv[]){
 			stringstream ss2;
 			ss2<<hex << LOCCTR; 
 			string res ( ss2.str() );
+			//stringstream res2;
+			//res2<<BLOCK_NO;
 
-			intermediate<<res<<"\t"<<opcode<<"\t"<<operand<<"\n";
+			intermediate<<to_string(BLOCK_NO)<<"\t"<<res<<"\t"<<opcode<<"\t"<<operand<<"\n";
 			intermediate.close();
 
 			return 1;
 	}
 	if(opcode.compare("END")!=0){
+
+
+
+	if(opcode.compare("USE")==0){
+		if(operand.compare("")==0){
+			stringstream nn(PGBLOCK[0][3]);
+			int lct;
+			nn>>lct;
+		//	cout<<"lct"<<PGBLOCK[0][3];
+			LOCCTR=lct;
+			BLOCK_NO=0;
+		}
+	
+		else{
+			int stat_b=search_block(operand);
+			if(stat_b>=0){
+				BLOCK_NO=stat_b;
+				stringstream nn2(PGBLOCK[stat_b][3]);
+				nn2>>LOCCTR;
+				//LOCCTR=PGBLOCK[stat_b][2];
+			}
+			else{
+				block_sz++;
+				BLOCK_NO=block_sz-1;
+				PGBLOCK[block_sz-1][0]=operand;
+				PGBLOCK[block_sz-1][1]=to_string(block_sz-1);
+				stringstream no1(PGBLOCK[block_sz-2][2]);
+				stringstream no2(PGBLOCK[block_sz-2][3]);
+				int nn1,nn2;
+				no1>>nn1;
+				no2>>nn2;
+				//stringstream res;
+				//res<<(nn1+nn2);
+				PGBLOCK[block_sz-1][2]=to_string(nn1+nn2);
+				PGBLOCK[block_sz-1][3]="0";
+				LOCCTR=0;
+			}
+		}
+	}
+
+
+
+
 	int temp=LOCCTR;
 	if(label.compare("")!=0){
 		int stat=search_symtab(label);
@@ -228,13 +313,18 @@ int pass1(int lineno,string label,string opcode,string operand,char argv[]){
 	else if(opcode.compare("BYTE")==0){
 		LOCCTR+=find_length(operand);
 	}
+	else if(opcode.at(0)=='=')
+		LOCCTR+=find_length(opcode);
 	else
 		error=2;
+	PGBLOCK[BLOCK_NO][3]=to_string(LOCCTR);
+	
 	std::stringstream ss3;
 	ss3<< hex << temp; 
 	string res ( ss3.str() );
 
-	intermediate<<res<<"\t"<<opcode<<"\t"<<operand<<"\n";
+
+	intermediate<<BLOCK_NO<<"\t"<<res<<"\t"<<opcode<<"\t"<<operand<<"\n";
 	intermediate.close();
 	return 1;
 	}
@@ -242,13 +332,13 @@ int pass1(int lineno,string label,string opcode,string operand,char argv[]){
 	ss4<< hex << LOCCTR; 
 	string res ( ss4.str() );
 
-	intermediate<<res<<"\t"<<opcode<<"\t"<<operand<<"\n";
+	intermediate<<BLOCK_NO<<"\t"<<res<<"\t"<<opcode<<"\t"<<operand<<"\n";
 	PGMLENGTH=LOCCTR-STARTADRESS;
 	stringstream ss5;
 	ss5<< hex << PGMLENGTH; 
 	string res_pgmlength ( ss5.str() );
 	cout<<"\n program length"<<res_pgmlength<<endl;
-
+	
 	intermediate.close();
 	return 0;
 }
@@ -259,15 +349,23 @@ int pass1(int lineno,string label,string opcode,string operand,char argv[]){
 
 
 int main(int argc,char *argv[]){
+	
+
 	fstream source;
 	string line,label,opcode,operand;
 	int lineno=0;
 	source.open(argv[1],ios::in);
+	PGBLOCK[0][0]="default";
+        PGBLOCK[0][1]="0";
+        PGBLOCK[0][2]="0";
+        PGBLOCK[0][3]="0";
+	
 	if(source.is_open())
 	{       
 
 		while (getline(source, line))
 		{	lineno++;
+			cout<<"line no"<<lineno;
 			cout<<line<<endl;
 			if(line.at(0)=='.')
 				continue;
@@ -282,16 +380,38 @@ int main(int argc,char *argv[]){
 				source.seekg(-1*line.length(),ios::cur);
 				getline(source,line);
 				stringstream ss(line);
+				opcode="";operand="";
 				ss>>opcode>>operand;
 				label="";
+					//cout<<"here";
+				
+				//else{
+				/*	cout<<"here"<<endl<<endl;
+					source.seekg(-1*(line.length()),ios::cur);
+					getline(source,line);
+					stringstream ss2(line);
+					ss2>>opcode
+						label="";operand="";
+					*/
+
+				//}
+
 			}
 			cout<<"label:"<<label<<"opcode:"<<opcode<<"operand:"<<operand<<endl;
-			pass1(lineno,label,opcode,operand,argv[1]);
+			int p=pass1(lineno,label,opcode,operand,argv[1]);
+			if(p==0){update_block_table(); break;}
+		//	cout<<"hello";
+			//for(int i=0;i<block_sz;i++)
+                        //	cout<<PGBLOCK[i]<<"\t"<<PGBLOCK[i]<<"\t"<<PGBLOCK[i]<<"\t"<<PGBLOCK[i]<<endl;
+
+			update_block_table();
 			
 
     		
 		}
+
 		source.close();
+		
 		
 	}
 	else cout<<"unable to open source file";
