@@ -252,11 +252,16 @@ void append_tr(){
 }
 void write_tr(char argv[]){
 	stringstream stream;
-
+	//cout<<"ll"<<tr_length<<endl;
+	//cout<<"hi";
+	//cout<<"\nooop"<<tr_length<<endl;
 	stream << hex <<tr_length;
-	string hex_v( stream.str() );
-	TEXT_REC.at(9)=hex_v.at(0);
-	TEXT_REC.at(10)=hex_v.at(1);
+	
+	//cout<<"length"<<x<<endl;
+	string hex_v( stream.str());
+	cout<<"\nhexv"<<hex_v<<endl;
+	TEXT_REC.at(7)=hex_v.at(0);
+	TEXT_REC.at(8)=hex_v.at(1);
 
 	char ff2[20];
         int i;
@@ -608,14 +613,17 @@ int assemble(string opcode,string operand_m[],string next){
 }
 int check_fit(){
 	int sz=0;
-	for(int i=0;i<TEXT_REC.length();i++){
+	int init=0;
+	for(int i=10;i<TEXT_REC.length();i++){
 		if(TEXT_REC.at(i)=='^')
-			continue;
-		else
-			sz++;
+		{	
+				continue;
+		}
+		
+		sz++;
 	}
 	tr_length=sz/2;
-	if(OBJ_CODE.length()+sz>69)
+	if(OBJ_CODE.length()/2+tr_length>30)
 		return 0;
 	else
 		return 1;
@@ -669,6 +677,7 @@ int search_symtab_all(string operand_m[],int om){
 	
 int err_s=0;
 string loc_next;
+int done=0;
 int pass2(int lineno,string loc,string loc_next,string opcode,string operand,char argv[]){
 	//do here
 	//cout<<"pass operand"<<operand;
@@ -684,6 +693,7 @@ int pass2(int lineno,string loc,string loc_next,string opcode,string operand,cha
 		if(opcode.compare("START")==0)
 		{	//write listing line
 			init_tr(loc);
+			done=0;
 			return 1;
 		}
 		else{	//cout<<"before init tr";
@@ -695,37 +705,45 @@ int pass2(int lineno,string loc,string loc_next,string opcode,string operand,cha
 
 					int stat2=search_symtab_all(operand_m,om);
 					if(stat2>=0){
-						assemble(opcode,operand_m,loc_next);
+						assemble(opcode,operand_m,loc_next);done=0;
 					}
 					else{
-						assemble(opcode,operand_m,loc_next);
+						assemble(opcode,operand_m,loc_next);done=0;
 						err_s=1;
 					}
 				}
 				else
-					assemble(opcode,operand_m,loc_next);
+				{	assemble(opcode,operand_m,loc_next);done=0;}
 			}
 			else if(opcode.compare("BYTE")==0||opcode.compare("WORD")==0){//not opcode
-				assemble(opcode,operand_m,loc_next);
+				assemble(opcode,operand_m,loc_next);done=0;
 			}
 			else if(opcode.compare("BASE")==0){
                                 BASE_FLAG=1;
                                 int stat4=search_symtab_all(operand_m,om);
 				if(stat4>=0)
                                 	//BASE_V=SYMTAB[statarr[0]][1];
+				done=0;
                                 return 1;
 
                         }
                         else if(opcode.compare("NOBASE")==0){
-                                BASE_FLAG=0;
+                                BASE_FLAG=0;done=0;
                                 return 1;
                         }
+			else if((opcode.compare("RESW")==0|| opcode.compare("RESB")==0)&&done!=1)
+			{		write_tr(argv);
+					init_tr(loc);
+					done=1;
+			}
+
                         else;
 
 			
 			if(!check_fit()){
 				write_tr(argv);
 				init_tr(loc);
+				done=1;
 			}
 			append_tr();
 		}
@@ -743,10 +761,10 @@ int pass2(int lineno,string loc,string loc_next,string opcode,string operand,cha
                                         int stat2=search_symtab_all(operand_m,om);
                                         if(stat2>=0){
 						
-                                               assemble(opcode,operand_m,loc_next);
+                                               assemble(opcode,operand_m,loc_next);done=0;
                                         }
                                         else{
-                                                assemble(opcode,operand_m,loc_next);
+                                                assemble(opcode,operand_m,loc_next);done=0;
                                                 err_s=1;
                                         }
                                 }
@@ -756,26 +774,28 @@ int pass2(int lineno,string loc,string loc_next,string opcode,string operand,cha
                         }
                         else if(opcode.compare("BYTE")==0||opcode.compare("WORD")==0){//not opcode
                                // look ascii for conversion  assemble(operand,"","","","","");
-				assemble(opcode,operand_m,loc_next);
+				assemble(opcode,operand_m,loc_next);done=0;
                         }
                         else if(opcode.compare("BASE")==0){
 				BASE_FLAG=1;
-				int stat4=search_symtab(operand);
+				int stat4=search_symtab(operand);done=0;
 				if(stat4>=0)
 				//BASE_V=SYMTAB[statarr[0]][1];
 				return 1;
 				
 			}
 			else if(opcode.compare("NOBASE")==0){
-				BASE_FLAG=0;
+				BASE_FLAG=0;done=0;
 				return 1;
 			}
-			else if(opcode.compare("RESW")==0|| opcode.compare("RESB")==0)
-			{		//write_tr(argv);
-					//init_tr(loc);
+			else if((opcode.compare("RESW")==0|| opcode.compare("RESB")==0)&&done!=1)
+			{		write_tr(argv);
+					done=1;
+					init_tr(loc);
 			}
                         if(!check_fit()){
                                 write_tr(argv);
+				done=1;
                                 init_tr(loc);
                         }
                         append_tr();
