@@ -327,8 +327,73 @@ bool is_number(const std::string& s)
     while (it != s.end() && std::isdigit(*it)) ++it;
     return !s.empty() && it == s.end();
 }
+string calc_dist_base(string dest,int format){
+		int ind=search_symtab(BASE_V);
+		if(ind>=0){
+		
+			stringstream str;
+			
+			signed int x;   
+			stringstream ss;
+			ss << hex << SYMTAB[ind][1];
+			ss >> x;
 
-string displace(string source,string dest,int format){
+			
+			
+			signed int y;   
+			stringstream dd;
+			dd << hex << dest;
+			dd >> y;
+			
+			y=y-x;
+			
+			
+			
+			stringstream res;
+			string r;
+			
+			if(format==3){
+				if(y<0)
+				{	if(y<-4096){
+						cout<<"\n memory overflow"<<endl;
+					}
+					res<<setfill('0') << setw(5)<<hex<<(y&0xfff);
+					
+						
+				r=res.str();
+				
+				
+				}
+				else
+				{	if(y>4095){
+						cout<<"\n memory overflow"<<endl;
+					}
+					res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
+				r=res.str();}
+				
+			}
+				
+			else if(format==4){
+				if(y<0){
+				res<<setfill('0') << setw(5)<<hex<<(y&0xfffff);
+				r=res.str();
+				
+				}
+				else{res<<setfill('0') << setw(5)<<hex<<(y&0xfffff);r=res.str();}
+				//int l=r.length();
+				
+			}
+
+
+			
+			
+			
+			return r;
+	}
+	else
+		return "00000";	
+}
+string displace(string source,string dest,int format,bitset<4>*xbpe){
 		stringstream str;
 		
 		signed int x;   
@@ -353,15 +418,29 @@ string displace(string source,string dest,int format){
 		if(format==3){
 			if(y<0)
 			{	res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
+				if(y<-2048){
+					if(BASE_FLAG==1){
+						r=calc_dist_base(dest,3);xbpe->set(2);
+					}
+				}
 				
-					
-			r=res.str();
+				else{	
+				r=res.str();xbpe->set(1);
+				}
 			
 			
 			}
 			else
-			{	res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
-			r=res.str();}
+			{res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
+				if(y>2047){
+					if(BASE_FLAG==1){
+						r=calc_dist_base(dest,3);xbpe->set(2);
+					}
+				}
+				else{r=res.str();xbpe->set(1);}
+						
+				
+			}
 			
 		}
 			
@@ -452,7 +531,7 @@ int check_pc(string disp){
 		
 	
 		if((x&0x800==2048)){
-			if(t>2048){
+			if(x&0xFFFF<0xF800){
 			
 			return 0;}
 		}
@@ -466,66 +545,7 @@ int check_pc(string disp){
 	return 1;
 }
 		
-string calc_dist_base(string dest,int format){
-		int ind=search_symtab(BASE_V);
-		if(ind>=0){
-		
-			stringstream str;
-			
-			signed int x;   
-			stringstream ss;
-			ss << hex << SYMTAB[ind][1];
-			ss >> x;
 
-			
-			
-			signed int y;   
-			stringstream dd;
-			dd << hex << dest;
-			dd >> y;
-			
-			y=y-x;
-			
-			
-			
-			stringstream res;
-			string r;
-			
-			if(format==3){
-				if(y<0)
-				{	res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
-					
-						
-				r=res.str();
-				
-				
-				}
-				else
-				{	res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
-				r=res.str();}
-				
-			}
-				
-			else if(format==4){
-				if(y<0){
-				res<<setfill('0') << setw(5)<<hex<<(y&0xfffff);
-				r=res.str();
-				
-				}
-				else{res<<setfill('0') << setw(5)<<hex<<(y&0xfffff);r=res.str();}
-				//int l=r.length();
-				
-			}
-
-
-			
-			
-			
-			return r;
-	}
-	else
-		return "00000";	
-}
 int assemble(string opcode,string operand_m[],string next){
 	int err=0;
 	int s_o=search_optab(opcode);
@@ -606,18 +626,8 @@ int assemble(string opcode,string operand_m[],string next){
 				int si=search_symtab(operand_m[1]);
 				
 				if(si>=0){
-					disp=displace(next,SYMTAB[si][1],3);
-					int dds=check_pc(disp);
-					if(dds==1)
-						xbpe.set(1);//set pc rel
-					else{	if(BASE_FLAG==1){
-						xbpe.set(2);
-						disp=calc_dist_base(SYMTAB[si][1],3);}
-						else{
-							err=1;
-							cout<<"\n pc overflow "<<endl;
-						}
-					}
+					disp=displace(next,SYMTAB[si][1],3,&xbpe);
+					
 				}
 				else if(is_number(operand_m[1])){///check if # is base relative IMPORTANT
 					disp=operand_m[1];
@@ -632,19 +642,8 @@ int assemble(string opcode,string operand_m[],string next){
 				
 				int si=search_symtab(operand_m[1]);
 				if(si>=0){
-					disp=displace(next,SYMTAB[si][1],3);
-					int dds=check_pc(disp);
-					//int dds=check_pc(disp);
-					if(dds==1)
-						xbpe.set(1);//set pc rel
-					else{	if(BASE_FLAG==1){
-						xbpe.set(2);
-						disp=calc_dist_base(SYMTAB[si][1],3);}
-						else{
-							err=1;
-							cout<<"\n pc overflow "<<endl;
-						}
-					}
+					disp=displace(next,SYMTAB[si][1],3,&xbpe);
+					
 				}
 				else{
 					err=1;cout<<"\n undefined symbol"<<endl;
@@ -672,18 +671,8 @@ int assemble(string opcode,string operand_m[],string next){
 					int si=search_symtab(operand_m[1]);
 					if(si>=0){
 						
-						disp=displace(next,SYMTAB[si][1],3);
-						int dds=check_pc(disp);
-						if(dds==1)
-							xbpe.set(1);//set pc rel
-						else{	if(BASE_FLAG==1){
-							xbpe.set(2);
-							disp=calc_dist_base(SYMTAB[si][1],3);}
-							else{
-							err=1;
-							cout<<"\n pc overflow "<<endl;
-						}
-						}
+						disp=displace(next,SYMTAB[si][1],3,&xbpe);
+						
 					}
 					else{err_s=1;cout<<"\n undefined symbol"<<endl;}
 		
