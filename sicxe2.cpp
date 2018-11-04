@@ -1,3 +1,14 @@
+/*****************************************************PASS 1 OF SIC/XE MACHINE***********************************************************************
+	CREATED BY ABIN SHOBY,ROLL NO:51006, R5,CSE,TKMCE*/
+
+/**********************************************************INSTRUCTIONS*******************************************************************************
+
+1)PASS THE SOURCE FILE AS COMMAND LINE ARGUEMENT FOR EXECUTION
+2)THE G++ VERSION SHOULD BE THE LATEST 7.3.0 OR HIGHER
+
+*****************************************************************************************************************************************************/
+
+//some of the commented lines can be uncommented to make block table
 #include<iostream>
 #include<stdio.h>
 #include<fstream>
@@ -164,7 +175,7 @@ void insert_to_symtab(string label,int locctr){
 
 int find_length(string operand){
 	
-	//cout<<"length"<<operand.length()<<endl;
+	
 	if(operand.at(0)=='C'){
 		return operand.length()-3;   //check here for syntax
 	}

@@ -1,3 +1,12 @@
+/****************************************************PASS 2 OF SIC/XE MACHINE********************************************************************
+	CREATED BY ABIN SHOBY,ROLL NO:51006, R5,CSE,TKMCE*/
+
+/*********************************************************INSTRUCTIONS****************************************************************************
+1)PASS THE INTERMEDIATE FILE AS COMMAND LINE ARGUEMENT FOR EXECUTION
+2)THE G++ VERSION SHOULD BE THE LATEST 7.3.0 OR HIGHER
+
+**************************************************************************************************************************************************/
+
 #include<string>
 #include<bitset>
 #include<string.h>
@@ -7,13 +16,14 @@
 #include<algorithm>
 #include<fstream>
 #include<iomanip>
+
 using namespace std;
 
 int LOCCTR=0;
 int STARTADRESS=0;
 string SYMTAB[100][2];
 int symtabsz=0;
-int error=0;
+int error=0;int err_s=0;
 int optabsz=101;
 int PGM_LENGTH;
 string PGM_NAME;
@@ -212,10 +222,27 @@ symtab.close();
 }
 string HEADER;
 void create_header(string pgm_name,string start_address,int  length){
+
+int sl=start_address.length();
+if(sl==0){
+	start_address="000000";
+}
+else{
+	while(sl<6){
+		start_address="0"+start_address;
+		sl++;
+	}
+}
 string out;
 stringstream ss;
 ss << length;
+
 out = ss.str();
+sl=out.length();
+while(sl<6){
+	out="0"+out;
+	sl++;
+}
 	HEADER="H^"+pgm_name+"^"+start_address+"^"+out;
 }
 void write_header(char argv[]){
@@ -240,6 +267,12 @@ string OBJ_CODE;
 string TEXT_REC;
 int tr_length=0;
 void init_tr(string loc){
+	int sl=loc.length();
+	while(sl<6){
+		loc="0"+loc;
+		sl++;
+	}
+
 	stringstream ss;
 	ss<<hex<<loc;
 	TEXT_REC="T^"+ss.str()+"^"+"  ";
@@ -250,19 +283,22 @@ void append_tr(){
 	TEXT_REC+="^"+OBJ_CODE;
 	//tr_length+=OBJ_L;
 }
-void write_tr(char argv[]){
-	stringstream stream;
-	//cout<<"ll"<<tr_length<<endl;
-	//cout<<"hi";
-	//cout<<"\nooop"<<tr_length<<endl;
-	stream << hex <<tr_length;
-	
-	//cout<<"length"<<x<<endl;
-	string hex_v( stream.str());
-	cout<<"\nhexv"<<hex_v<<endl;
-	TEXT_REC.at(7)=hex_v.at(0);
-	TEXT_REC.at(8)=hex_v.at(1);
 
+		
+void write_tr(char argv[]){
+	if(tr_length!=0){
+	stringstream stream;
+	
+	stream << setfill('0') << setw(2)<<hex<<(tr_length&0xff);
+	
+	
+	
+	string hex_v( stream.str());
+	
+	
+	TEXT_REC.at(9)=hex_v.at(0);
+	TEXT_REC.at(10)=hex_v.at(1);
+	
 	char ff2[20];
         int i;
         strcpy(ff2,argv);
@@ -277,8 +313,11 @@ void write_tr(char argv[]){
 	fstream obj;
 	//obj.open(ff2,ios::out);
         obj.open(ff2,ios::app);
+	for(auto& x: TEXT_REC)
+        x = toupper(x);
         obj<<TEXT_REC<<endl;
         obj.close();
+	}
 
 }
 int err_mm=0;
@@ -310,7 +349,7 @@ string displace(string source,string dest,int format){
 		
 		stringstream res;
 		string r;
-		//cout<<"here"<<hex<<-20<<endl;
+		
 		if(format==3){
 			if(y<0)
 			{	res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
@@ -338,20 +377,54 @@ string displace(string source,string dest,int format){
 		}
 
 
-		cout<<"\nlength disp"<<res.str().length()<<endl<<endl;
 		
-		cout<<"actual"<<r<<endl;
+		
+		
+		
 		return r;
 }
-/*int find_comm(string operand[],int om){
-	for(int i=0;i<om;i++){
-		if(operand[i].compare(",")==0)
-			return i;
+string MR;
+void create_mod(string loc,int format){
+	int h_s;//half bytes size
+	
+	if(format==4){
+		stringstream ss;
+		ss<<hex<<loc;
+		int l;
+		ss>>l;
+		l=l-3;
+		stringstream tt;
+		tt<<setfill('0') << setw(6)<<hex<<(l&0xffffff);
+		MR+="M^"+tt.str()+"^05"+"\n";
 	}
-	return -1;
-}*/
+	
+}
+void write_mod(char argv[]){
+	MR.at(MR.length()-1)=' ';
+	char ff2[20];
+        int i;
+        strcpy(ff2,argv);
+        for(i=0;i<strlen(argv);i++){
+                if(ff2[i]=='.')
+                        break;
+        }
+        ff2[i]='.';
+        ff2[i+1]='o';
+        ff2[i+2]='b';
+        ff2[i+3]='j';
+	fstream obj;
+	//obj.open(ff2,ios::out);
+        obj.open(ff2,ios::app);
+	for(auto& x: MR)
+        x = toupper(x);
+        obj<<MR<<endl;
+        obj.close();
+}
+		
+		
+
 string char_to_hex(string operand){
-	cout<<operand<<endl;
+	
 	string res="";
 	char arr[20];
 	strcpy(arr,operand.c_str());
@@ -364,18 +437,109 @@ string char_to_hex(string operand){
 	return res;
 }
 		
+int check_pc(string disp){
+	stringstream str;
+		
+		signed int x;   
+		stringstream ss;
+		
+		ss << setfill('0') << setw(3)<<hex<<(disp);
+		ss >> x;
+		
+		signed int s=x&0x800;
+		signed int t=x&0x7ff;
+		
+		
 	
+		if((x&0x800==2048)){
+			if(t>2048){
+			
+			return 0;}
+		}
+		if((x&0x800==0)){
+			if(t>=0x7ff){
+			return 0;}
+		}
+		
+		
+		
+	return 1;
+}
+		
+string calc_dist_base(string dest,int format){
+		int ind=search_symtab(BASE_V);
+		if(ind>=0){
+		
+			stringstream str;
+			
+			signed int x;   
+			stringstream ss;
+			ss << hex << SYMTAB[ind][1];
+			ss >> x;
 
+			
+			
+			signed int y;   
+			stringstream dd;
+			dd << hex << dest;
+			dd >> y;
+			
+			y=y-x;
+			
+			
+			
+			stringstream res;
+			string r;
+			
+			if(format==3){
+				if(y<0)
+				{	res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
+					
+						
+				r=res.str();
+				
+				
+				}
+				else
+				{	res<<setfill('0') << setw(3)<<hex<<(y&0xfff);
+				r=res.str();}
+				
+			}
+				
+			else if(format==4){
+				if(y<0){
+				res<<setfill('0') << setw(5)<<hex<<(y&0xfffff);
+				r=res.str();
+				
+				}
+				else{res<<setfill('0') << setw(5)<<hex<<(y&0xfffff);r=res.str();}
+				//int l=r.length();
+				
+			}
+
+
+			
+			
+			
+			return r;
+	}
+	else
+		return "00000";	
+}
 int assemble(string opcode,string operand_m[],string next){
 	int err=0;
 	int s_o=search_optab(opcode);
 	if(s_o>=0){
+		if(opcode.compare("LDB")==0){
+			BASE_V=operand_m[1];
+		}
 		string opcode_hex_s=OPTAB[s_o][1];
 		if(OPTAB[s_o][2].compare("1")==0){//format1
-				OBJ_CODE+=opcode_hex_s;	
+				OBJ_CODE=opcode_hex_s;	
 				return 1;
 		}
 		else if(OPTAB[s_o][2].compare("2")==0){
+			
 			if(operand_m[1].compare("A")==0){
 				OBJ_CODE=opcode_hex_s+"0";
 			}
@@ -391,8 +555,11 @@ int assemble(string opcode,string operand_m[],string next){
 				OBJ_CODE=opcode_hex_s+"5";
 			else if(operand_m[1].compare("F")==0)
 				OBJ_CODE=opcode_hex_s+"6";
-			else
+			else{
 				err=1;
+				cout<<"\n undefined operand for format 2"<<endl;
+				
+			}
 			if(operand_m[3].compare("A")==0){
 				OBJ_CODE+="0";
 			}
@@ -414,73 +581,124 @@ int assemble(string opcode,string operand_m[],string next){
 				OBJ_CODE+=operand_m[3];//CHECK
 			}
 				
-			else
-				err=1;
+			else{
+				err=1;cout<<"\n undefined operand for format 2"<<endl;
+			}
+			
 			return 1;
 		}
 		else if(OPTAB[s_o][2].compare("3")==0){
-			//cout<<"for 3";
+			
 			stringstream con;
-			//string s = "0xA";
+			
     			stringstream ss;
     			ss << hex << opcode_hex_s.at(1);
     			unsigned n;
    			ss >> n;
     			bitset<4> ni(n);
 			bitset<4> xbpe("0000");
-			//bitset<4>ni(opcode_hex_s.at(1));
-			//cout<<opcode_hex_s.at(1)<<endl;
-			//cout<<ni;
+			
+			
+			
 			string disp;
 			if(operand_m[0].compare("#")==0){
 				ni.set(0);
 				int si=search_symtab(operand_m[1]);
-				//cout<<si;
+				
 				if(si>=0){
 					disp=displace(next,SYMTAB[si][1],3);
-					xbpe.set(1);//set pc rel
+					int dds=check_pc(disp);
+					if(dds==1)
+						xbpe.set(1);//set pc rel
+					else{	if(BASE_FLAG==1){
+						xbpe.set(2);
+						disp=calc_dist_base(SYMTAB[si][1],3);}
+						else{
+							err=1;
+							cout<<"\n pc overflow "<<endl;
+						}
+					}
 				}
-				else if(is_number(operand_m[1]))
+				else if(is_number(operand_m[1])){///check if # is base relative IMPORTANT
 					disp=operand_m[1];
-				else
-					err=1;
+				}
+					
+				else{
+					err=1;cout<<"\n undefined symbol"<<endl;}
 				
 			}
 			else if(operand_m[0].compare("@")==0){
 				ni.set(1);
-				cout<<ni<<endl;
-				int si=search_symtab(operand_m[1]);
-				if(si>=0){
-					disp=displace(next,SYMTAB[si][1],3);
-				}
-				else
-					err=1;
-				xbpe.set(1);//set pc rel
-			}
-			else if(operand_m[0].compare("")==0){
-				ni.set(0);ni.set(1);
-				//cout<<"ni"<<ni;
-				if(operand_m[3].compare("X")==0){
-					xbpe.set(3);
-					
-				}
 				
 				int si=search_symtab(operand_m[1]);
 				if(si>=0){
-					//cout<<"sym"<<SYMTAB[si][1];
 					disp=displace(next,SYMTAB[si][1],3);
+					int dds=check_pc(disp);
+					//int dds=check_pc(disp);
+					if(dds==1)
+						xbpe.set(1);//set pc rel
+					else{	if(BASE_FLAG==1){
+						xbpe.set(2);
+						disp=calc_dist_base(SYMTAB[si][1],3);}
+						else{
+							err=1;
+							cout<<"\n pc overflow "<<endl;
+						}
+					}
 				}
-
-				xbpe.set(1);//set pc rel
+				else{
+					err=1;cout<<"\n undefined symbol"<<endl;
+				}
+				
 			}
-			else;
+			else if(operand_m[0].compare("")==0){
+				ni.set(0);ni.set(1);
+				
+				
+				
+				if(operand_m[1].compare("")==0){//rsub
+					//for rsub
+					
+					xbpe.reset(0);xbpe.reset(1);xbpe.reset(2);xbpe.reset(3);
+					disp="000";
+					
+				}
+				else{
+					if(operand_m[3].compare("X")==0){
+						xbpe.set(3);
+					
+					}
+				
+					int si=search_symtab(operand_m[1]);
+					if(si>=0){
+						
+						disp=displace(next,SYMTAB[si][1],3);
+						int dds=check_pc(disp);
+						if(dds==1)
+							xbpe.set(1);//set pc rel
+						else{	if(BASE_FLAG==1){
+							xbpe.set(2);
+							disp=calc_dist_base(SYMTAB[si][1],3);}
+							else{
+							err=1;
+							cout<<"\n pc overflow "<<endl;
+						}
+						}
+					}
+					else{err_s=1;cout<<"\n undefined symbol"<<endl;}
+		
+					
+				}
+			}
+			else{
+			};
 			
 
 			stringstream conv;
 			conv<<hex<<ni.to_ulong();
 			opcode_hex_s.replace(1,1,conv.str());
 			OBJ_CODE=opcode_hex_s;
-			cout<<"\n obj1:"<<OBJ_CODE<<endl<<endl;
+			
 			int xbpe1;
 			string hexv;
 			 stringstream tt;
@@ -498,9 +716,9 @@ int assemble(string opcode,string operand_m[],string next){
 			}
 			
 			OBJ_CODE+=hexv;
-			cout<<"\n obj2:"<<OBJ_CODE<<endl<<endl;
+			
 			OBJ_CODE+=disp;
-			cout<<"\n obj3:"<<OBJ_CODE<<endl<<endl;
+			
 			return 1;
 		}
 		else if(OPTAB[s_o][2].compare("4")==0){//format 4
@@ -524,10 +742,11 @@ int assemble(string opcode,string operand_m[],string next){
 					stringstream shex;
 					shex<<hex<<n;
 					disp=shex.str();
-					//cout<<"no";
+					
 				}
-				else
-					err=1;
+				else{
+					err=1;cout<<"\n undefined symbol"<<endl;
+				}
 				//xbpe.set(1)=1;//set pc rel
 			}
 			else if(operand_m[0].compare("@")==0){
@@ -536,8 +755,9 @@ int assemble(string opcode,string operand_m[],string next){
 				if(si>=0){
 					disp=SYMTAB[si][1];
 				}
-				else
-					err=1;
+				else{
+					err=1;cout<<"\n undefined symbol"<<endl;
+				}
 				//xbpe.set(1);//set pc rel
 			}
 			else if(operand_m[0].compare("")==0){
@@ -550,6 +770,10 @@ int assemble(string opcode,string operand_m[],string next){
 				int si=search_symtab(operand_m[1]);
 				if(si>=0){
 					disp=SYMTAB[si][1];
+				}
+				else{
+					xbpe.set(0);xbpe.reset(1);xbpe.reset(2);xbpe.reset(3);
+					disp="00000";
 				}
 				//xbpe.set(1);//set pc rel
 			}
@@ -578,6 +802,8 @@ int assemble(string opcode,string operand_m[],string next){
 			
 			OBJ_CODE+=hexv;
 			OBJ_CODE+=disp;
+			if(operand_m[0].compare("#")!=0)
+				create_mod(next,4);
 			return 1;
 		}
 			
@@ -591,20 +817,28 @@ int assemble(string opcode,string operand_m[],string next){
 		if(opcode.compare("WORD")==0){
 			unsigned n;stringstream hh;
 			stringstream no(operand_m[1]);
+			
 			no>>n;
+			if(operand_m[1].compare("")==0)
+			{
+				cout<<"\n no value defined in operand field"<<endl;err_s=1;OBJ_CODE="000000";return 1;
+			}
 			hh<<hex<<n;
 			OBJ_CODE=hh.str();
 			return 1;
 		}
 		else if(opcode.compare("BYTE")==0){
-		
+			if(operand_m[1].compare("")==0){
+				cout<<"\n no value defined in operand field"<<endl;err_s=1;OBJ_CODE="000000";return 1;
+			}
 			if(operand_m[1].at(0)=='X'){
 				OBJ_CODE=operand_m[1].substr(2,operand_m[1].length()-3);
+				
 			}
 			else if(operand_m[1].at(0)=='C'){
 				OBJ_CODE=char_to_hex(operand_m[1].substr(2,operand_m[1].length()-3));
 			}
-			else err=1;
+			else{cout<<"\n Undefined symbol: "<<operand_m[1]<<endl;err=1;}
 			return 1;
 		}
 			
@@ -614,25 +848,30 @@ int assemble(string opcode,string operand_m[],string next){
 int check_fit(){
 	int sz=0;
 	int init=0;
+	
+	
 	for(int i=10;i<TEXT_REC.length();i++){
 		if(TEXT_REC.at(i)=='^')
 		{	
-				continue;
-		}
+				;
+		}else{
 		
-		sz++;
+		sz++;}
 	}
+	
 	tr_length=sz/2;
+	
 	if(OBJ_CODE.length()/2+tr_length>30)
 		return 0;
-	else
-		return 1;
+	else{tr_length+=(OBJ_CODE.length()/2);
+		return 1;}
 
 }
 int modify(string operand,string operand_m[]){
 	operand_m[0]=operand_m[1]=operand_m[2]=operand_m[3]="";
 	int start=0;
 	int sz=0;
+	if(operand.length()>0){
 	if(operand.at(0)=='#'||operand.at(0)=='@'){
 			operand_m[0]=operand.at(0);
 			start=1;
@@ -646,7 +885,7 @@ int modify(string operand,string operand_m[]){
 	
 	//append each operand
 	if(comm>=0){
-	operand_m[sz++]=operand.substr(start,comm-1);
+	operand_m[sz++]=operand.substr(start,comm);
 	operand_m[sz++]=",";
 	operand_m[sz++]=operand.substr(comm+1,operand.length());
 	
@@ -655,6 +894,7 @@ int modify(string operand,string operand_m[]){
 		operand_m[sz++]=operand.substr(start,operand.length());
 		operand_m[sz++]="";
 		operand_m[sz++]="";
+	}
 	}
 	return sz;
 
@@ -675,75 +915,84 @@ int search_symtab_all(string operand_m[],int om){
 	
 	
 	
-int err_s=0;
+
 string loc_next;
 int done=0;
+int err_o=0;
 int pass2(int lineno,string loc,string loc_next,string opcode,string operand,char argv[]){
-	//do here
-	//cout<<"pass operand"<<operand;
-//	string operand_m=operand;
+	
+
 	string operand_m[4];
 	//int statarr[10],lst;
 	int om=modify(operand,operand_m);
 	
+	
 	if(lineno==1){
 		create_header(PGM_NAME,operand,PGM_LENGTH);
 		write_header(argv);
-		//cout<<"before start";
+		
 		if(opcode.compare("START")==0)
 		{	//write listing line
 			init_tr(loc);
-			done=0;
+			
 			return 1;
 		}
-		else{	//cout<<"before init tr";
+		else{	
 			init_tr(loc);
-			//cout<<"after init_tr";
+			
 			int stat=search_optab(opcode);
 			if(stat>=0){//opcode found
 				if(operand.compare("")!=0){
 
 					int stat2=search_symtab_all(operand_m,om);
 					if(stat2>=0){
-						assemble(opcode,operand_m,loc_next);done=0;
+						assemble(opcode,operand_m,loc_next);
 					}
 					else{
-						assemble(opcode,operand_m,loc_next);done=0;
+						assemble(opcode,operand_m,loc_next);
 						err_s=1;
 					}
 				}
 				else
-				{	assemble(opcode,operand_m,loc_next);done=0;}
+				{	assemble(opcode,operand_m,loc_next);}
 			}
 			else if(opcode.compare("BYTE")==0||opcode.compare("WORD")==0){//not opcode
-				assemble(opcode,operand_m,loc_next);done=0;
+				assemble(opcode,operand_m,loc_next);
 			}
 			else if(opcode.compare("BASE")==0){
                                 BASE_FLAG=1;
                                 int stat4=search_symtab_all(operand_m,om);
-				if(stat4>=0)
-                                	//BASE_V=SYMTAB[statarr[0]][1];
-				done=0;
-                                return 1;
+				if(stat4==-1){
+					err_s=1;
+					cout<<"\n Invalid symbol"<<endl;
+				}
+                                	
+				
+                                //return 1;
 
                         }
                         else if(opcode.compare("NOBASE")==0){
-                                BASE_FLAG=0;done=0;
+                                BASE_FLAG=0;
                                 return 1;
                         }
-			else if((opcode.compare("RESW")==0|| opcode.compare("RESB")==0)&&done!=1)
+			else if((opcode.compare("RESW")==0|| opcode.compare("RESB")==0))
 			{		write_tr(argv);
 					init_tr(loc);
-					done=1;
+					tr_length=0;
+					return 1;
+					
+					
 			}
 
-                        else;
+                        else{err_o=1;cout<<"\n Invalid opcode"<<endl;}
 
 			
 			if(!check_fit()){
+				
 				write_tr(argv);
 				init_tr(loc);
-				done=1;
+				
+				
 			}
 			append_tr();
 		}
@@ -751,20 +1000,19 @@ int pass2(int lineno,string loc,string loc_next,string opcode,string operand,cha
 		return 1;
 	}
 	else{//not first line
-	//	cout<<"before initr";
-		//init_tr(loc);
-//		cout<<"after initr";
-			//cout<<"operand pp"<<operand;
+		
+		
+			
                         int stat=search_optab(opcode);
                         if(stat>=0){//opcode found
                                 if(operand.compare("")!=0){
                                         int stat2=search_symtab_all(operand_m,om);
                                         if(stat2>=0){
 						
-                                               assemble(opcode,operand_m,loc_next);done=0;
+                                               assemble(opcode,operand_m,loc_next);
                                         }
                                         else{
-                                                assemble(opcode,operand_m,loc_next);done=0;
+                                                assemble(opcode,operand_m,loc_next);
                                                 err_s=1;
                                         }
                                 }
@@ -773,43 +1021,65 @@ int pass2(int lineno,string loc,string loc_next,string opcode,string operand,cha
 				    
                         }
                         else if(opcode.compare("BYTE")==0||opcode.compare("WORD")==0){//not opcode
-                               // look ascii for conversion  assemble(operand,"","","","","");
-				assemble(opcode,operand_m,loc_next);done=0;
+                               
+				assemble(opcode,operand_m,loc_next);
                         }
                         else if(opcode.compare("BASE")==0){
 				BASE_FLAG=1;
-				int stat4=search_symtab(operand);done=0;
-				if(stat4>=0)
-				//BASE_V=SYMTAB[statarr[0]][1];
+				int stat4=search_symtab(operand);
+				if(stat4==-1){
+					err_s=1;
+					cout<<"\n Invalid symbol"<<endl;
+				}
+				
 				return 1;
 				
 			}
 			else if(opcode.compare("NOBASE")==0){
-				BASE_FLAG=0;done=0;
+				BASE_FLAG=0;
 				return 1;
 			}
-			else if((opcode.compare("RESW")==0|| opcode.compare("RESB")==0)&&done!=1)
+			else if((opcode.compare("RESW")==0|| opcode.compare("RESB")==0))
 			{		write_tr(argv);
 					done=1;
 					init_tr(loc);
-			}
+					tr_length=0;
+					return 1;
+			}else if(opcode.compare("END")==0)
+				return 1;
+			else{
+				err_o=1;
+				cout<<"\n Invalid opcode"<<endl;}
                         if(!check_fit()){
-                                write_tr(argv);
-				done=1;
+				
+                                	write_tr(argv);
+				
                                 init_tr(loc);
                         }
                         append_tr();
 			
-			cout<<"TEXT RECORD:"<<TEXT_REC;
+			
+			
                 }
                 //write listing line
                 return 1;
 }
 	
 void write_er(string opcode,string sym_v,string loc,char argv[]){
-	string ER="E^"+loc+"^"+sym_v;
+	write_mod(argv);
+	int sl=sym_v.length();
+	if(sl==0){
+		sym_v="000000";
+	}
+	else{
+		while(sl<6){
+		sym_v="0"+sym_v;
+		sl++;
+		}
+	}
+	string ER="E^"+sym_v;
 	fstream out;
-	//write_tr(argv);
+	
 	char ff2[20];
         int i;
         strcpy(ff2,argv);
@@ -860,87 +1130,60 @@ int main(int argc,char *argv[]){
 
 		while (getline(intermediate, line))
 		{	lineno++;
+			opcode="";loc="";operand="";
 			if(line.compare(" ")==0){
-				write_tr(argv[1]);
-				//fstream pgml;
-				//pgml.open("program_length.txt",ios::out);
+				//write_tr(argv[1]);
 				
-				//PGMLENGTH=LOCCTR-STARTADRESS;
-				//stringstream ss5;
-				//ss5<< hex << PGMLENGTH; 
-				//string res_pgmlength ( ss5.str() );
-				//cout<<"\n program length"<<res_pgmlength<<endl;
-				//pgml<<res_pgmlength<<endl;
-				//pgml.close();
 				break;
 				}
 			
-			//cout<<"length"<<line.length();
+			
 			cout<<"\nAssembling the instruction:"<<line<<"line no"<<lineno<<endl;
 				
 			
 			if(line.at(0)=='.')
 				continue;
-			//cout<<"bb";
+			
     			stringstream ss6(line);
-		//cout<<"hikkk";	
-    string last;
+			
+    			string last;
     			if(ss6 >> loc >> opcode >> operand){
+				
 				loc=padd_zero(loc);
-		//		cout<<"read loc"<<loc;
+				
     				getline(intermediate,line2);
-		//		cout<<"next line:"<<line2;
+		
 				stringstream gg(line2);
 				gg>>loc_next;
-		//		cout<<"loc_next"<<loc_next;
+		
 				intermediate.seekg(-1*(line2.length()+1),ios::cur);
 				;
 		
 			}
-			else{	ss6>>opcode>>operand;
-		//		cout<<"read loc"<<loc;
+			else if	(ss6>>loc>>opcode){;
+					
                                 getline(intermediate,line2);
                                 stringstream gg(line2);
                                 gg>>loc_next;
 				loc_next=padd_zero(loc_next);
-                  //              cout<<"loc_next"<<loc_next;
+                  
                                 intermediate.seekg(-1*(line2.length()+1),ios::cur);
-		//		cout<<"hi";
+		
 				}
-
-			/*else{
-				intermediate.seekg(-1*line.length(),ios::cur);
-				getline(intermediate,line);
-				stringstream ss(line);
-				opcode="";operand="";
-				ss>>opcode>>operand;
-				loc="";
-					//cout<<"here";
+			else{	stringstream tt(line);
+				tt>>loc>>opcode;
 				
-				//else{
-					cout<<"here"<<endl<<endl;
-					source.seekg(-1*(line.length()),ios::cur);
-					getline(source,line);
-					stringstream ss2(line);
-					ss2>>opcode
-						label="";operand="";
-					
+				operand="";
+				
 
-				//}
-
-			}*/
+			}
 			
-			//cout<<"label:"<<label<<"opcode:"<<opcode<<"operand:"<<operand<<endl;
-			//ss6.close();
-		//	cout<<"operand before call"<<operand;
+			
+		
 			int p=pass2(lineno,loc,loc_next,opcode,operand,argv[1]);
 			if(p==0){//update_block_table();
 			 break;}
-		//	cout<<"hello";
-			//for(int i=0;i<block_sz;i++)
-                        //	cout<<PGBLOCK[i]<<"\t"<<PGBLOCK[i]<<"\t"<<PGBLOCK[i]<<"\t"<<PGBLOCK[i]<<endl;
-
-			//update_block_table();
+		
 			
 
     		
@@ -950,11 +1193,14 @@ int main(int argc,char *argv[]){
 		int stat;
 		if(operand.compare("")!=0){
 			stat=search_symtab(operand);
+			
+			write_tr(argv[1]);
 			write_er(opcode,SYMTAB[stat][1],loc,argv[1]);
 		}
-		else
+		else{	
 			write_er(opcode,"0",loc,argv[1]);
-		
+		}
+	
 		
 	}
 	else cout<<"unable to open source file";
